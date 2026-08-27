@@ -14,15 +14,22 @@ export default function DrillRunScreen({ route, navigation }) {
   const soundRef = useRef();
 
   useEffect(() => {
+    let isMounted = true;
+
     async function loadSound() {
       const { sound } = await Audio.Sound.createAsync(
         require('../Assets/sound/beep.mp3')
       );
-      soundRef.current = sound;
+      if (isMounted) {
+        soundRef.current = sound;
+      } else {
+        await sound.unloadAsync();
+      }
     }
 
     loadSound();
     return () => {
+      isMounted = false;
       if (soundRef.current) {
         soundRef.current.unloadAsync();
       }
@@ -35,17 +42,19 @@ export default function DrillRunScreen({ route, navigation }) {
         await soundRef.current.replayAsync();
       }
       setFlash((f) => !f);
-      setCurrentBreak((c) => c + 1);
+      setCurrentBreak((count) => {
+        const nextCount = count + 1;
+
+        if (nextCount >= BREAK_COUNT) {
+          clearInterval(intervalRef.current);
+        }
+
+        return Math.min(nextCount, BREAK_COUNT);
+      });
     }, BREAK_INTERVAL);
 
     return () => clearInterval(intervalRef.current);
   }, []);
-
-  useEffect(() => {
-    if (currentBreak >= BREAK_COUNT) {
-      clearInterval(intervalRef.current);
-    }
-  }, [currentBreak]);
 
   return (
     <View style={styles.container}>
